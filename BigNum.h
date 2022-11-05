@@ -18,8 +18,7 @@ class BigNum final
 {
 public:
 	// constructors
-	std::vector<uint8_t> digits;
-	bool negative{ false };
+	
 	BigNum() {
 		digits.push_back(0);
 	};
@@ -28,9 +27,14 @@ public:
 			negative = true;
 			n *= -1;
 		}
-		while (n > 0) {
-			digits.push_back(static_cast<uint8_t>(n % 10));
-			n = n / 10;
+		if (n == 0) {
+			digits.push_back(0);
+		}
+		else {
+			while (n > 0) {
+				digits.push_back(static_cast<uint8_t>(n % 10));
+				n = n / 10;
+			}
 		}
 	}
 	explicit BigNum(const std::string& str) {
@@ -99,16 +103,53 @@ public:
 		return b;
 	};
 	// binary arithmetics operators
-	BigNum& operator+=(const BigNum& rhs);
-	BigNum& operator-=(const BigNum& rhs);
-	BigNum& operator*=(const BigNum& rhs);
+	BigNum& operator+=(const BigNum& rhs) {
+		BigNum a = BigNum();
+		a = *this + rhs;
+		this->digits.resize(a.digits.size());
+		for (size_t i = 0; i < a.digits.size();i++) {
+			digits[i] = a.digits[i];
+		}
+		return *this;
+	}
+	BigNum& operator-=(const BigNum& rhs) {
+		BigNum a = BigNum();
+		a = *this;
+		a = a - rhs;
+		this->digits.resize(a.digits.size());
+		for (size_t i = 0; i < a.digits.size(); i++) {
+			digits[i] = a.digits[i];
+		}
+		return *this;
+	}
+	BigNum& operator*=(const BigNum& rhs) {
+		{
+			BigNum a = BigNum();
+			a = *this;
+			a = a * rhs;
+			this->digits.resize(a.digits.size());
+			for (size_t i = 0; i < a.digits.size(); i++) {
+				digits[i] = a.digits[i];
+			}
+			return *this;
+	}
+	}
 #if SUPPORT_DIVISION == 1
 	BigNum& operator/=(const BigNum& rhs); // bonus
 	BigNum& operator%=(const BigNum& rhs); // bonus
 #endif
 private:
+	std::vector<uint8_t> digits;
+	bool negative{ false };
 	// here you can add private data and members, but do not add stuff to 
 	// public interface, also you can declare friends here if you want
+	friend BigNum operator+(BigNum lhs, const BigNum& rhs);
+	friend BigNum operator-(BigNum lhs, const BigNum& rhs);
+	friend BigNum operator*(BigNum lhs, const BigNum& rhs);
+	friend bool operator<(const BigNum& lhs, const BigNum& rhs);
+	friend bool operator==(const BigNum& lhs, const BigNum& rhs);
+	friend std::ostream& operator<<(std::ostream& lhs, const BigNum& rhs);
+	friend bool bigger_abs(BigNum& a, const BigNum& b);
 };
 BigNum operator+(BigNum lhs, const BigNum& rhs) {
 	BigNum a = BigNum();
@@ -212,8 +253,10 @@ BigNum operator*(BigNum lhs, const BigNum& rhs) {
 			remainder = multipl / 10;
 			temp[i].digits.push_back(multipl % 10);
 		}
-		if(remainder !=0)
+		if (remainder != 0) {
 			temp[i].digits.push_back(remainder);
+			remainder = 0;
+		}
 		//apend 0 for addition after
 		for (size_t z = 0; z < i; z++) {
 			temp[i].digits.insert(temp[i].digits.begin(), 0);
