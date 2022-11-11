@@ -1,12 +1,13 @@
+#pragma once
 #include <iostream>
 #include<optional>
 #include<vector>
-#pragma once
 // here you can include whatever you want :)
 #include <string>
 #include <stdint.h>
 #include <exception>
-#pragma once
+
+
 #define SUPPORT_DIVISION 0 // define as 1 when you have implemented the division
 #define SUPPORT_IFSTREAM 0 // define as 1 when you have implemented the input >>
 
@@ -14,6 +15,7 @@
 // or just keep them as is and do not define the macro to 1
 class BigNum;
 bool bigger_abs(BigNum& a, const BigNum& b);
+bool equal_abs(BigNum& a, const BigNum& b);
 class BigNum final
 {
 public:
@@ -69,7 +71,7 @@ public:
 			}
 		}
 		if (not_zero == false) { // input was something like 000000 or -00000 or +00000
-			std::cout << "Boli same nuly \n";
+			//std::cout << "Boli same nuly \n";
 			digits.insert(digits.begin(), 0);
 			negative = false;
 		}
@@ -105,11 +107,13 @@ public:
 	// binary arithmetics operators
 	BigNum& operator+=(const BigNum& rhs) {
 		BigNum a = BigNum();
-		a = *this + rhs;
+		a = *this;
+		a = a + rhs;
 		this->digits.resize(a.digits.size());
 		for (size_t i = 0; i < a.digits.size();i++) {
 			digits[i] = a.digits[i];
 		}
+		this->negative = a.negative;
 		return *this;
 	}
 	BigNum& operator-=(const BigNum& rhs) {
@@ -120,19 +124,19 @@ public:
 		for (size_t i = 0; i < a.digits.size(); i++) {
 			digits[i] = a.digits[i];
 		}
+		this->negative = a.negative;
 		return *this;
 	}
 	BigNum& operator*=(const BigNum& rhs) {
-		{
-			BigNum a = BigNum();
-			a = *this;
-			a = a * rhs;
-			this->digits.resize(a.digits.size());
-			for (size_t i = 0; i < a.digits.size(); i++) {
-				digits[i] = a.digits[i];
-			}
-			return *this;
-	}
+		BigNum a = BigNum();
+		a = *this;
+		a = a * rhs;
+		this->digits.resize(a.digits.size());
+		for (size_t i = 0; i < a.digits.size(); i++) {
+			digits[i] = a.digits[i];
+		}
+		this->negative = a.negative;
+		return *this;
 	}
 #if SUPPORT_DIVISION == 1
 	BigNum& operator/=(const BigNum& rhs); // bonus
@@ -150,6 +154,7 @@ private:
 	friend bool operator==(const BigNum& lhs, const BigNum& rhs);
 	friend std::ostream& operator<<(std::ostream& lhs, const BigNum& rhs);
 	friend bool bigger_abs(BigNum& a, const BigNum& b);
+	friend bool equal_abs(BigNum& a, const BigNum& b);
 };
 BigNum operator+(BigNum lhs, const BigNum& rhs) {
 	BigNum a = BigNum();
@@ -164,26 +169,26 @@ BigNum operator+(BigNum lhs, const BigNum& rhs) {
 	size_t i = 0;
 	// left is positive right is negative so its lhs - rhs
 	if (lhs.negative == false && rhs.negative == true) {
-		if (bigger_abs(lhs, rhs) == false) { //rhs has bigger abs value
+		if (bigger_abs(lhs, rhs) == false && equal_abs(lhs,rhs) == false) { //If rhs has bigger absolute value
 			a = (-rhs) + (-lhs);
 			a.negative = true;
 			return a;
 		}
 		// now we do lhs - rhs, lhs is bigger
-		for (i; i < n_min; i++) { // loop until the smaller length, where both have defined digits
-			if (lhs.digits[i] < rhs.digits[i]) {
-				diff = lhs.digits[i] * 10 - rhs.digits[i] + remainder;
+		for (i=0; i < n_min; i++) { // loop until the smaller length, where both have defined digits
+			if (lhs.digits[i] < (rhs.digits[i]+remainder)) {
+				diff = (lhs.digits[i] + 10) - (rhs.digits[i] + remainder);
 				remainder = 1;
 			}
 			else {
-				diff = lhs.digits[i] - rhs.digits[i] + remainder;
+				diff = lhs.digits[i] - (rhs.digits[i] + remainder);
 				remainder = 0;
 			}
 			a.digits[i] = diff;
 		}
-		for (i; i < n1; i++) {
+		for (; i < n1; i++) { //continue until n1
 			if (lhs.digits[i] < remainder) {
-				diff = lhs.digits[i] * 10 - remainder;
+				diff = lhs.digits[i] + 10 - remainder;
 				remainder = 1;
 			}
 			else {
@@ -191,6 +196,13 @@ BigNum operator+(BigNum lhs, const BigNum& rhs) {
 				remainder = 0;
 			}
 			a.digits[i] = diff;
+		}
+		// delete 0 before for example 01
+		for (size_t k = a.digits.size() - 1; k > 0; k--) {
+			if (a.digits[k] != 0)
+				break;
+			else
+				a.digits.erase(a.digits.begin()+k);
 		}
 		a.negative = lhs.negative;
 		return a;
@@ -209,20 +221,20 @@ BigNum operator+(BigNum lhs, const BigNum& rhs) {
 	}
 	//BOTH ARE POSITIVE NUMBERS  or both are negative  numbers
 	i = 0;
-	for (i; i < n_min; i++) { // loop until the smaller length, where both have defined digits
+	for (; i < n_min; i++) { // loop until the smaller length, where both have defined digits
 		sum = lhs.digits[i] + rhs.digits[i] + remainder;
 		a.digits[i] = sum % 10;
 		remainder = sum / 10;
 	}
 	if (n_max == n1) { // lhs is longer
-		for (i; i < n1; i++) {
+		for (; i < n1; i++) {
 			sum = (lhs.digits[i] + remainder);
 			a.digits[i] = sum % 10;
 			remainder = sum / 10;
 		}
 	}
 	else if (n_max == n2) { // rhs is longer
-		for (i; i < n2; i++) {
+		for (; i < n2; i++) {
 			sum = (rhs.digits[i] + remainder);
 			a.digits[i] = sum % 10;
 			remainder = sum / 10;
@@ -244,6 +256,9 @@ BigNum operator*(BigNum lhs, const BigNum& rhs) {
 	size_t n2 = rhs.digits.size();
 	uint8_t remainder = 0;
 	uint8_t multipl = 0;
+	if ((n1 == 1 && lhs.digits[0] == 0) || (n2 == 1 && rhs.digits[0] == 0)) {
+		return a;
+	}
 	std::vector<BigNum> temp;
 	for (size_t i = 0; i < n2; i++) {
 		temp.push_back(BigNum(0));
@@ -280,7 +295,7 @@ BigNum operator%(BigNum lhs, const BigNum& rhs); // bonus
 // std::strong_ordering operator<=>(const BigNum& lhs, const BigNum& rhs);
 // idea is, that all comparison should work, it is not important how you do it
 bool operator==(const BigNum& lhs, const BigNum& rhs) {
-	if (lhs.digits.size() != lhs.digits.size()) {
+	if (lhs.digits.size() != rhs.digits.size()) {
 		return false;
 	}
 	for (size_t i = 0; i < lhs.digits.size(); i++) {
@@ -303,6 +318,13 @@ bool operator<(const BigNum& lhs, const BigNum& rhs) {
 	if (n_right > n_left && lhs.negative == false && rhs.negative == false) {
 		return true;
 	}
+	//both negative numbers, different length
+	if (n_left > n_right && lhs.negative == true && rhs.negative == true) {
+		return true;
+	}
+	if (n_left < n_right && lhs.negative == true && rhs.negative == true) {
+		return false;
+	}
 	// one positive one negative
 	if (lhs.negative == true && rhs.negative == false) {
 		return true;
@@ -310,28 +332,35 @@ bool operator<(const BigNum& lhs, const BigNum& rhs) {
 	if (lhs.negative == false && rhs.negative == true) {
 		return false;
 	}
-	//both positive equal length or both negative different length
+	//both positive or negative, equal length 
 	size_t i = lhs.digits.size() - 1;
-	bool end_flag = false;
-	for (size_t j = 0; j < lhs.digits.size(); j++) { // we go from the bigger numbers down and compare those, retarded syntax but for(size_t i=digits.size()-1; i >=0; i--) gave me a warning even when i had a break
-		if (i > rhs.digits.size()) { // rhs is shorter 
-			if (rhs.negative == true) { //they are both negative and rhs is shorter than lhs so lhs is smaller since we work with negative numbers
-				return true;
-			}
-			else { // rhs is positive so lhs is positive too, lhs is longer so lhs is bigger we return false
-				return false;
-			}
-		}
+	for (; i > 0; i--) { // we go from bigger numbers to lower numbers
 		if (lhs.digits[i] < rhs.digits[i]) { // we found smaller digit in lhs
-			return true;
+			if (lhs.negative == true) //if they are both negative and lhs has smaller digit than its bigger
+				return false;
+			else
+				return true; //if they are both positive and lhs has smaller digit than it is smaller
 		}
-		if (i == 0) {
-			end_flag = true;
-			break;
+		else if (lhs.digits[i] > rhs.digits[i]) { // if rhs digit was smaller
+			if (lhs.negative == true) //if they are both negative rhs is bigger so return true lhs is smaller
+				return true;
+			else
+				return false; // if they are both positive rhs is smaller, so return false lhs is bigger
 		}
-		i -= 1;
 	}
-	return false;
+	if (lhs.digits[0] < rhs.digits[0]) { //compare the last digit
+		if (lhs.negative == true)
+			return false;
+		else
+			return true;
+	}
+	else if (lhs.digits[i] > rhs.digits[i]) { // if rhs digit was smaller
+		if (lhs.negative == true) //if they are both negative rhs is bigger so return true lhs is smaller
+			return true;
+		else
+			return false; // if they are both positive rhs is smaller, so return false lhs is bigger
+	}
+	return false; // they are equal
 };
 bool operator>(const BigNum& lhs, const BigNum& rhs) {
 	return rhs < lhs;
@@ -358,16 +387,28 @@ std::ostream& operator<<(std::ostream& lhs, const BigNum& rhs) {
 #if SUPPORT_IFSTREAM == 1
 std::istream& operator>>(std::istream& lhs, BigNum& rhs); // bonus
 #endif
-bool bigger_abs(BigNum& a, const BigNum& b) { // return true if a has bigger or equal absolute value than b
+bool bigger_abs(BigNum& a, const BigNum& b) { // return true if A has bigger or equal absolute value than B
 	if (a.digits.size() > b.digits.size())
 		return true;
 	if (b.digits.size() > a.digits.size())
 		return false;
-	for (size_t i = 0; i < a.digits.size(); i++) {
+	for (size_t i = a.digits.size()-1; i > 0; i--) {
 		if (a.digits[i] > b.digits[i])
 			return true;
 		if (a.digits[i] < b.digits[i])
 			return false;
 	}
-	return true;
+	return a.digits[0] > b.digits[0];
+}
+
+bool equal_abs(BigNum& a, const BigNum& b) {
+	if (a.digits.size() > b.digits.size())
+		return false;
+	if (b.digits.size() > a.digits.size())
+		return false;
+	for (size_t i = a.digits.size() - 1; i > 0; i--) {
+		if (a.digits[i] != b.digits[i])
+			return false;
+	}
+	return a.digits[0] == b.digits[0];
 }
